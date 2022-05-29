@@ -29,5 +29,5 @@ class BlDictionaryServiceAutoConfiguration {
     fun webClientDictionaryService() = WebClientDictionaryService(WebClient.create("$urlApi/api/v$apiVersion/"))
 
     @Bean
-    fun dictionaryService(webClientPS: WebClientDictionaryService) = DictionaryService(webClientPS)
+    fun dictionaryService(webClientDS: WebClientDictionaryService) = DictionaryService(webClientDS)
 }

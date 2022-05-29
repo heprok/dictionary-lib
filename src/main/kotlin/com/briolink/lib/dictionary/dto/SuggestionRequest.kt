@@ -8,7 +8,7 @@ data class SuggestionRequest(
     val limit: Int = 10,
     val offset: Int = 0,
     /**
-     * Parents path id
+     * Parents path id, ltree PostgreSQL type
      * @sample "1.2.3"
      */
     val parentIds: Set<String>? = null

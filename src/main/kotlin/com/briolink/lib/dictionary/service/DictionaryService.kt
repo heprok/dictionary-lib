@@ -1,136 +1,123 @@
 package com.briolink.lib.dictionary.service
 
-import com.briolink.lib.dictionary.enumeration.AccessObjectTypeEnum
-import com.briolink.lib.dictionary.enumeration.PermissionRoleEnum
-import com.briolink.lib.dictionary.exception.exist.PermissionRoleExistException
-import com.briolink.lib.dictionary.exception.notfound.PermissionRightNotFoundException
-import com.briolink.lib.dictionary.exception.notfound.UserPermissionRoleNotFoundException
-import com.briolink.lib.dictionary.model.PermissionRight
-import com.briolink.lib.dictionary.model.UserPermissionRights
-import com.briolink.lib.dictionary.model.UserPermissionRole
-import java.util.UUID
+import com.briolink.lib.common.exception.EntityExistException
+import com.briolink.lib.common.exception.EntityNotFoundException
+import com.briolink.lib.common.exception.ValidationException
+import com.briolink.lib.common.type.basic.BlSuggestion
+import com.briolink.lib.dictionary.dto.SuggestionRequest
+import com.briolink.lib.dictionary.dto.TagCreateRequest
+import com.briolink.lib.dictionary.dto.TagGetRequest
+import com.briolink.lib.dictionary.enumeration.SuggestionTypeEnum
+import com.briolink.lib.dictionary.enumeration.TagType
+import com.briolink.lib.dictionary.model.Tag
 
 open class DictionaryService(private val webClient: WebClientDictionaryService) {
-    open fun getPermissionRole(
-        userId: UUID,
-        accessObjectId: UUID,
-        accessObjectType: String
-    ): PermissionRoleEnum? {
-        return try {
-            webClient.getPermissionRole(
-                userId = userId,
-                accessObjectId = accessObjectId,
-                accessObjectType = accessObjectType
-            ).block()?.let {
-                PermissionRoleEnum.ofId(it.role.id)
-            }
-        } catch (ex: UserPermissionRoleNotFoundException) {
-            null
-        }
+
+    /**
+     * Get suggestions tags
+     * @param request
+     * @return List of suggestions
+     */
+    open fun getSuggestions(request: SuggestionRequest): List<BlSuggestion> {
+        return webClient.getSuggestions(request).block()?.listSuggestion ?: listOf()
     }
 
-    open fun setPermissionRights(
-        userId: UUID,
-        accessObjectId: UUID,
-        accessObjectType: String,
-        permissionRole: String,
-        permissionRights: List<String>
-    ): UserPermissionRights? {
-
-        return webClient.setPermissionRights(
-            userId = userId,
-            accessObjectId = accessObjectId,
-            accessObjectType = accessObjectType,
-            permissionRole = permissionRole,
-            permissionRights = permissionRights
-        ).block()?.let {
-            UserPermissionRights(
-                permissionRole = it.userRole,
-                permissionRights = it.rights,
-            )
-        }
+    /**
+     * Get suggestions tags
+     *
+     * @param type Suggestion type
+     * @param query find str
+     * @param limit max count
+     * @param offset offset
+     * @param parentIds path parent
+     * @return List of suggestions
+     */
+    open fun getSuggestions(
+        type: SuggestionTypeEnum,
+        query: String? = null,
+        limit: Int = 10,
+        offset: Int = 0,
+        parentIds: List<String>? = null
+    ): List<BlSuggestion> {
+        return getSuggestions(SuggestionRequest(type, query, limit, offset, parentIds?.toSet()))
     }
 
-    open fun getUserPermissionRights(
-        userId: UUID,
-        accessObjectId: UUID,
-        accessObjectType: AccessObjectTypeEnum
-    ): UserPermissionRights? {
-        return try {
-            webClient.getUserPermissionRights(
-                userId = userId,
-                accessObjectId = accessObjectId,
-                accessObjectType = accessObjectType
-            ).block()?.let {
-                UserPermissionRights(
-                    permissionRole = it.userRole,
-                    permissionRights = it.rights,
-                )
-            }
-        } catch (ex: PermissionRightNotFoundException) {
-            null
-        }
+    /**
+     * Create a new tag
+     *
+     * @param request the tag creation request
+     * @throws EntityNotFoundException Parent tag doesn't exist
+     * @throws AccessDeniedException Access denied
+     * @throws ValidationException Validation error
+     * @throws EntityExistException Tag with path already exists
+     * @return Tag created
+     */
+    open fun createTag(request: TagCreateRequest): Tag {
+        return webClient.createTag(request).block() ?: throw RuntimeException("Tag not created")
     }
 
-    open fun checkPermission(
-        userId: UUID,
-        accessObjectId: UUID,
-        right: PermissionRight
-    ): Boolean {
-        return webClient.checkPermission(
-            userId = userId,
-            accessObjectId = accessObjectId,
-            right = right
-        ).block() ?: false
+    /**
+     * Create tag
+     * @param name the tag name
+     * @param type the tag type
+     * @param path the tag path
+     * @param id UUID or slug or null
+     * @throws EntityNotFoundException Parent tag doesn't exist
+     * @throws AccessDeniedException Access denied
+     * @throws ValidationException Validation error
+     * @throws EntityExistException Tag with path already exists
+     * @return Tag created
+     *
+     */
+    open fun createTag(
+        id: String? = null,
+        name: String,
+        type: TagType,
+        path: String? = null,
+    ): Tag {
+        return createTag(TagCreateRequest(id, name, type, path))
     }
 
-    open fun checkPermission(
-        userId: UUID,
-        accessObjectId: UUID,
-        right: String
-    ): Boolean {
-        return checkPermission(userId, accessObjectId, PermissionRight.fromString(right))
+    /**
+     * Find a new tag
+     *
+     * @param request the tag creation request
+     * @return Tag or null if not found
+     */
+    open fun getTagOrNull(request: TagGetRequest): Tag? {
+        return webClient.getTag(request).block()
     }
 
-    @Throws(PermissionRoleExistException::class)
-    open fun createPermissionRole(
-        userId: UUID,
-        accessObjectType: AccessObjectTypeEnum,
-        accessObjectId: UUID,
-        permissionRole: PermissionRoleEnum
-    ): UserPermissionRole? {
-        return webClient.createPermissionRole(
-            userId = userId,
-            accessObjectType = accessObjectType,
-            accessObjectId = accessObjectId,
-            permissionRole = permissionRole
-
-        ).block()?.let { UserPermissionRole.fromDto(it) }
+    /**
+     * Find a tag
+     * @param id UUID or slug
+     * @param type Tag type
+     * @param withParent If true, the parent tag will be returned
+     * @return Tag or null if not found
+     */
+    open fun getTagOrNull(id: String, type: TagType, withParent: Boolean = true): Tag? {
+        return getTagOrNull(TagGetRequest(id, type, withParent))
     }
 
-    open fun editPermissionRole(
-        userId: UUID,
-        accessObjectType: AccessObjectTypeEnum,
-        accessObjectId: UUID,
-        permissionRole: PermissionRoleEnum
-    ): UserPermissionRole? {
-        return webClient.editPermissionRole(
-            userId = userId,
-            accessObjectType = accessObjectType,
-            accessObjectId = accessObjectId,
-            permissionRole = permissionRole
-        ).block()?.let { UserPermissionRole.fromDto(it) }
+    /**
+     * Find a tag
+     * @param request the tag creation request
+     * @throws EntityNotFoundException Tag not found
+     * @return Tag or null if not found
+     */
+    open fun getTag(request: TagGetRequest): Tag {
+        return getTagOrNull(request) ?: throw EntityNotFoundException("Tag not found")
     }
 
-    open fun deletePermissionRole(
-        userId: UUID,
-        accessObjectType: AccessObjectTypeEnum,
-        accessObjectId: UUID,
-    ): Boolean {
-        return webClient.deletePermissionRole(
-            userId = userId,
-            accessObjectType = accessObjectType,
-            accessObjectId = accessObjectId
-        ).block() ?: false
+    /**
+     * Find a tag
+     * @param id UUID or slug
+     * @param type Tag type
+     * @param withParent If true, the parent tag will be returned
+     * @throws EntityNotFoundException Tag not found
+     * @return Tag
+     */
+    open fun getTag(id: String, type: TagType, withParent: Boolean = true): Tag {
+        return getTagOrNull(id, type, withParent) ?: throw EntityNotFoundException("Tag not found")
     }
 }
