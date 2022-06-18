@@ -3,7 +3,7 @@ package com.briolink.lib.dictionary.service
 import com.briolink.lib.common.exception.EntityExistException
 import com.briolink.lib.common.exception.EntityNotFoundException
 import com.briolink.lib.common.exception.ValidationException
-import com.briolink.lib.common.type.basic.BlSuggestion
+import com.briolink.lib.common.type.basic.Suggestion
 import com.briolink.lib.dictionary.dto.SuggestionRequest
 import com.briolink.lib.dictionary.dto.TagCreateRequest
 import com.briolink.lib.dictionary.dto.TagGetRequest
@@ -18,7 +18,7 @@ open class DictionaryService(private val webClient: WebClientDictionaryService) 
      * @param request
      * @return List of suggestions
      */
-    open fun getSuggestions(request: SuggestionRequest): List<BlSuggestion> {
+    open fun getSuggestions(request: SuggestionRequest): List<Suggestion> {
         return webClient.getSuggestions(request).block()?.listSuggestion ?: listOf()
     }
 
@@ -38,7 +38,7 @@ open class DictionaryService(private val webClient: WebClientDictionaryService) 
         limit: Int = 10,
         offset: Int = 0,
         parentIds: List<String>? = null
-    ): List<BlSuggestion> {
+    ): List<Suggestion> {
         return getSuggestions(SuggestionRequest(type, query, limit, offset, parentIds?.toSet()))
     }
 
@@ -54,6 +54,23 @@ open class DictionaryService(private val webClient: WebClientDictionaryService) 
      */
     open fun createTag(request: TagCreateRequest): Tag {
         return webClient.createTag(request).block() ?: throw RuntimeException("Tag not created")
+    }
+
+    /**
+     * Find tag if not exist then create
+     * @param request tag creation request
+     * @param withParent if true return tag with parents else return tag without parents
+     *
+     * @throws AccessDeniedException Access denied
+     * @throws ValidationException Validation error
+     * @throws EntityExistException Tag with path already exists
+     * @return Tag
+     */
+    open fun getTagIfNotExistsCreate(request: TagCreateRequest, withParent: Boolean = true): Tag {
+        val tag = if (request.id != null) getTagByIdOrNull(request.id, request.type, withParent)
+        else getTagByNameOrNull(request.name, request.type, request.path, withParent)
+
+        return tag ?: createTag(request)
     }
 
     /**
@@ -84,19 +101,8 @@ open class DictionaryService(private val webClient: WebClientDictionaryService) 
      * @param request the tag creation request
      * @return Tag or null if not found
      */
-    open fun getTagOrNull(request: TagGetRequest): Tag? {
+    private fun getTagOrNull(request: TagGetRequest): Tag? {
         return webClient.getTag(request).block()
-    }
-
-    /**
-     * Find a tag
-     * @param id UUID or slug
-     * @param type Tag type
-     * @param withParent If true, the parent tag will be returned
-     * @return Tag or null if not found
-     */
-    open fun getTagOrNull(id: String, type: TagType, withParent: Boolean = true): Tag? {
-        return getTagOrNull(TagGetRequest(id, type, withParent))
     }
 
     /**
@@ -114,10 +120,61 @@ open class DictionaryService(private val webClient: WebClientDictionaryService) 
      * @param id UUID or slug
      * @param type Tag type
      * @param withParent If true, the parent tag will be returned
+     * @return Tag or null if not found
+     */
+    open fun getTagByIdOrNull(id: String, type: TagType, withParent: Boolean = true): Tag? {
+        return getTagOrNull(TagGetRequest(id, null, null, type, withParent))
+    }
+
+    /**
+     * Find a tag
+     * @param name Name tag
+     * @param type Tag type
+     * @param path Tag path
+     * @param withParent If true, the parent tag will be returned
+     * @return Tag or null if not found
+     */
+    open fun getTagByNameOrNull(name: String, type: TagType, path: String?, withParent: Boolean = true): Tag? {
+        return getTagOrNull(TagGetRequest(null, name, path, type, withParent))
+    }
+
+    /**
+     * Find a tag
+     * @param id UUID or slug
+     * @param type Tag type
+     * @param withParent If true, the parent tag will be returned
      * @throws EntityNotFoundException Tag not found
      * @return Tag
      */
-    open fun getTag(id: String, type: TagType, withParent: Boolean = true): Tag {
-        return getTagOrNull(id, type, withParent) ?: throw EntityNotFoundException("Tag not found")
+    open fun getTagById(id: String, type: TagType, withParent: Boolean = true): Tag {
+        return getTagByIdOrNull(id, type, withParent) ?: throw EntityNotFoundException("Tag not found")
+    }
+
+    /**
+     * Find a tag
+     * @param ids ids tags
+     * @param type Tag type
+     * @param withParent If true, the parent tag will be returned
+     *
+     * @throws EntityNotFoundException Tag not found if ids.size != tags.size
+     */
+
+    open fun getTags(ids: Set<String>, withParent: Boolean = true): List<Tag> {
+        return webClient.getTags(ids, withParent).block()?.tags?.also {
+            if (it.size != ids.size) throw EntityNotFoundException("Tags not found")
+        } ?: throw EntityNotFoundException("Tags not found")
+    }
+
+    /**
+     * Find a tag
+     * @param name Name tag
+     * @param type Tag type
+     * @param path Tag path
+     * @param withParent If true, the parent tag will be returned
+     * @throws EntityNotFoundException Tag not found
+     * @return Tag
+     */
+    open fun getTagByName(name: String, type: TagType, path: String?, withParent: Boolean = true): Tag {
+        return getTagByNameOrNull(name, type, path, withParent) ?: throw EntityNotFoundException("Tag not found")
     }
 }

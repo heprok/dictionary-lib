@@ -16,10 +16,10 @@ enum class TagType(
     Keyword("2"),
 
     @JsonProperty
-    Vertical("3", idIsUUID = true),
+    Vertical("3"),
 
     @JsonProperty
-    ProductCode("4"),
+    CPCCode("4"),
 
     @JsonProperty
     InvestorType("5"),
@@ -31,13 +31,34 @@ enum class TagType(
     Universe("7"),
 
     @JsonProperty
-    DealStatus("8"),
+    DealClass("8"),
 
     @JsonProperty
     ServiceProviderType("9"),
 
     @JsonProperty
-    DealType("10", withPath = true);
+    DealType("10", withPath = true),
+
+    @JsonProperty
+    SIC("11", withPath = true),
+
+    @JsonProperty
+    FinancingStatus("12"),
+
+    @JsonProperty
+    InvestorStatus("13"),
+
+    @JsonProperty
+    ValuationStatus("14"),
+
+    @JsonProperty
+    RealAssetType("14"),
+
+    @JsonProperty
+    OtherStated("15"),
+
+    @JsonProperty
+    InvestmentType("16");
 
     companion object {
         private val map = values().associateBy(TagType::value)

@@ -4,12 +4,13 @@ import com.briolink.lib.common.exception.AccessDeniedException
 import com.briolink.lib.common.exception.EntityExistException
 import com.briolink.lib.common.exception.EntityNotFoundException
 import com.briolink.lib.common.exception.ValidationException
-import com.briolink.lib.common.type.basic.BlErrorResponse
-import com.briolink.lib.common.type.basic.ListBlSuggestion
+import com.briolink.lib.common.type.basic.ErrorResponse
+import com.briolink.lib.common.type.basic.ListSuggestion
 import com.briolink.lib.dictionary.dto.SuggestionRequest
 import com.briolink.lib.dictionary.dto.TagCreateRequest
 import com.briolink.lib.dictionary.dto.TagGetRequest
 import com.briolink.lib.dictionary.enumeration.SuggestionTypeEnum
+import com.briolink.lib.dictionary.model.ListTags
 import com.briolink.lib.dictionary.model.Tag
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -21,7 +22,7 @@ open class WebClientDictionaryService(private val webClient: WebClient) {
     protected open val tagUrl = "tags"
     protected open val suggestionUrl = "suggestions"
 
-    protected open fun <T : Exception> convertErrorResponseToMonoErrorAtTag(response: BlErrorResponse): Mono<T> {
+    protected open fun <T : Exception> convertErrorResponseToMonoErrorAtTag(response: ErrorResponse): Mono<T> {
         return when (response.httpsStatus) {
             HttpStatus.FORBIDDEN -> Mono.error(AccessDeniedException(response.message ?: "Access denied"))
             HttpStatus.NOT_ACCEPTABLE -> Mono.error(ValidationException(response.message ?: "Tag type not found"))
@@ -31,7 +32,7 @@ open class WebClientDictionaryService(private val webClient: WebClient) {
         }
     }
 
-    protected open fun <T : Exception> convertErrorResponseToMonoErrorAtSuggestion(response: BlErrorResponse): Mono<T> {
+    protected open fun <T : Exception> convertErrorResponseToMonoErrorAtSuggestion(response: ErrorResponse): Mono<T> {
         return when (response.httpsStatus) {
             HttpStatus.FORBIDDEN -> Mono.error(AccessDeniedException(response.message ?: "Access denied"))
             HttpStatus.NOT_ACCEPTABLE ->
@@ -40,7 +41,7 @@ open class WebClientDictionaryService(private val webClient: WebClient) {
         }
     }
 
-    open fun getSuggestions(request: SuggestionRequest): Mono<ListBlSuggestion> {
+    open fun getSuggestions(request: SuggestionRequest): Mono<ListSuggestion> {
         return webClient.get()
             .uri { builder ->
                 builder.path("/$suggestionUrl/")
@@ -54,11 +55,11 @@ open class WebClientDictionaryService(private val webClient: WebClient) {
             .accept(MediaType.APPLICATION_JSON)
             .retrieve()
             .onStatus(HttpStatus::is4xxClientError) { response ->
-                return@onStatus response.bodyToMono(BlErrorResponse::class.java).flatMap { error ->
+                return@onStatus response.bodyToMono(ErrorResponse::class.java).flatMap { error ->
                     return@flatMap convertErrorResponseToMonoErrorAtSuggestion(error)
                 }
             }
-            .bodyToMono(ListBlSuggestion::class.java)
+            .bodyToMono(ListSuggestion::class.java)
     }
 
     open fun getSuggestions(
@@ -67,8 +68,25 @@ open class WebClientDictionaryService(private val webClient: WebClient) {
         limit: Int = 10,
         offset: Int = 0,
         parentIds: List<String>? = null
-    ): Mono<ListBlSuggestion> {
+    ): Mono<ListSuggestion> {
         return getSuggestions(SuggestionRequest(type, query, limit, offset, parentIds?.toSet()))
+    }
+
+    open fun getTags(ids: Set<String>, withParent: Boolean = true): Mono<ListTags> {
+        return webClient.get()
+            .uri { builder ->
+                builder.path("/$tagUrl/")
+                    .queryParam("ids", ids)
+                    .queryParam("withParent", withParent)
+                    .build()
+            }
+            .retrieve()
+            .onStatus(HttpStatus::is4xxClientError) { response ->
+                return@onStatus response.bodyToMono(ErrorResponse::class.java).flatMap { error ->
+                    return@flatMap convertErrorResponseToMonoErrorAtTag(error)
+                }
+            }
+            .bodyToMono(ListTags::class.java)
     }
 
     open fun getTag(request: TagGetRequest): Mono<Tag> {
@@ -76,13 +94,15 @@ open class WebClientDictionaryService(private val webClient: WebClient) {
             .uri { builder ->
                 builder.path("/$tagUrl/")
                     .queryParam("id", request.id)
+                    .queryParam("name", request.name)
+                    .queryParam("path", request.path)
                     .queryParam("type", request.type.name)
                     .queryParam("withParent", request.withParent)
                     .build()
             }
             .retrieve()
             .onStatus(HttpStatus::is4xxClientError) { response ->
-                return@onStatus response.bodyToMono(BlErrorResponse::class.java).flatMap { error ->
+                return@onStatus response.bodyToMono(ErrorResponse::class.java).flatMap { error ->
                     return@flatMap convertErrorResponseToMonoErrorAtTag(error)
                 }
             }
@@ -101,7 +121,7 @@ open class WebClientDictionaryService(private val webClient: WebClient) {
             }
             .retrieve()
             .onStatus(HttpStatus::is4xxClientError) { response ->
-                return@onStatus response.bodyToMono(BlErrorResponse::class.java).flatMap { error ->
+                return@onStatus response.bodyToMono(ErrorResponse::class.java).flatMap { error ->
                     return@flatMap convertErrorResponseToMonoErrorAtTag(error)
                 }
             }

@@ -9,7 +9,7 @@ object Versions {
     }
 
     object Briolink {
-        const val COMMON = "0.0.3"
+        const val COMMON = "0.0.4"
     }
     object Plugin {
         const val SPOTLESS = "6.3.0"

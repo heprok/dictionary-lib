@@ -15,8 +15,17 @@ data class TagCreateRequest(
     val path: String? = null,
 )
 
+/**
+ * Get request must be name or id
+ */
 data class TagGetRequest(
-    val id: String,
+    val id: String?,
+    val name: String?,
+    val path: String?,
     val type: TagType,
     val withParent: Boolean = false,
-)
+) {
+    init {
+        if (id == null && name == null) throw IllegalArgumentException("Query must be name or id")
+    }
+}
