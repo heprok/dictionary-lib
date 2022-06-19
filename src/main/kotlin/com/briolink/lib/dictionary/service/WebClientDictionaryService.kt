@@ -25,6 +25,7 @@ open class WebClientDictionaryService(private val webClient: WebClient) {
     protected open fun <T : Exception> convertErrorResponseToMonoErrorAtTag(response: ErrorResponse): Mono<T> {
         return when (response.httpsStatus) {
             HttpStatus.FORBIDDEN -> Mono.error(AccessDeniedException(response.message ?: "Access denied"))
+            HttpStatus.BAD_REQUEST -> Mono.error(AccessDeniedException(response.message ?: "Bad request"))
             HttpStatus.NOT_ACCEPTABLE -> Mono.error(ValidationException(response.message ?: "Tag type not found"))
             HttpStatus.NOT_FOUND -> Mono.error(EntityNotFoundException(response.message ?: "Parent tag not found"))
             HttpStatus.CONFLICT -> Mono.error(EntityExistException(response.message ?: "Tag and path already exists"))
@@ -72,12 +73,17 @@ open class WebClientDictionaryService(private val webClient: WebClient) {
         return getSuggestions(SuggestionRequest(type, query, limit, offset, parentIds?.toSet()))
     }
 
-    open fun getTags(ids: Set<String>, withParent: Boolean = true): Mono<ListTags> {
+    open fun getTags(request: TagGetRequest): Mono<ListTags> {
         return webClient.get()
             .uri { builder ->
                 builder.path("/$tagUrl/")
-                    .queryParam("ids", ids)
-                    .queryParam("withParent", withParent)
+                    .queryParam("ids", request.ids)
+                    .queryParam("names", request.names)
+                    .queryParam("paths", request.paths)
+                    .queryParam("types", request.types?.map { it.name })
+                    .queryParam("limit", request.limit)
+                    .queryParam("offset", request.offset)
+                    .queryParam("withParent", request.withParent)
                     .build()
             }
             .retrieve()
@@ -89,15 +95,11 @@ open class WebClientDictionaryService(private val webClient: WebClient) {
             .bodyToMono(ListTags::class.java)
     }
 
-    open fun getTag(request: TagGetRequest): Mono<Tag> {
+    open fun getTag(id: String, withParent: Boolean = false): Mono<Tag> {
         return webClient.get()
             .uri { builder ->
-                builder.path("/$tagUrl/")
-                    .queryParam("id", request.id)
-                    .queryParam("name", request.name)
-                    .queryParam("path", request.path)
-                    .queryParam("type", request.type.name)
-                    .queryParam("withParent", request.withParent)
+                builder.path("/$tagUrl/$id")
+                    .queryParam("withParent", withParent)
                     .build()
             }
             .retrieve()

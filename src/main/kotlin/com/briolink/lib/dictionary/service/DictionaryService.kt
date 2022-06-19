@@ -67,7 +67,7 @@ open class DictionaryService(private val webClient: WebClientDictionaryService) 
      * @return Tag
      */
     open fun getTagIfNotExistsCreate(request: TagCreateRequest, withParent: Boolean = true): Tag {
-        val tag = if (request.id != null) getTagByIdOrNull(request.id, request.type, withParent)
+        val tag = if (request.id != null) getTagByIdOrNull(request.id, withParent)
         else getTagByNameOrNull(request.name, request.type, request.path, withParent)
 
         return tag ?: createTag(request)
@@ -96,13 +96,23 @@ open class DictionaryService(private val webClient: WebClientDictionaryService) 
     }
 
     /**
-     * Find a new tag
+     * Find tag by request and first tag or null
      *
-     * @param request the tag creation request
+     * @param request the tag get request
      * @return Tag or null if not found
      */
     private fun getTagOrNull(request: TagGetRequest): Tag? {
-        return webClient.getTag(request).block()
+        return webClient.getTags(request).block()?.tags?.firstOrNull()
+    }
+
+    /**
+     * Find tags by request
+     *
+     * @param request the tag get request
+     * @return List tag
+     */
+    private fun getTags(request: TagGetRequest): List<Tag>? {
+        return webClient.getTags(request).block()?.tags
     }
 
     /**
@@ -111,58 +121,52 @@ open class DictionaryService(private val webClient: WebClientDictionaryService) 
      * @throws EntityNotFoundException Tag not found
      * @return Tag or null if not found
      */
-    open fun getTag(request: TagGetRequest): Tag {
+    private fun getTag(request: TagGetRequest): Tag {
         return getTagOrNull(request) ?: throw EntityNotFoundException("Tag not found")
     }
 
     /**
      * Find a tag
-     * @param id UUID or slug
-     * @param type Tag type
+     * @param id
      * @param withParent If true, the parent tag will be returned
      * @return Tag or null if not found
      */
-    open fun getTagByIdOrNull(id: String, type: TagType, withParent: Boolean = true): Tag? {
-        return getTagOrNull(TagGetRequest(id, null, null, type, withParent))
+    open fun getTagByIdOrNull(
+        id: String,
+        withParent: Boolean = true
+    ): Tag? {
+        return webClient.getTag(id, withParent).block()
     }
 
     /**
-     * Find a tag
+     * Find tag
+     * @param id
+     * @param withParent If true, the parent tag will be returned
+     * @throws EntityNotFoundException Tag not found
+     * @return Tag
+     */
+    open fun getTagById(id: String, withParent: Boolean = true): Tag {
+        return getTagByIdOrNull(id, withParent) ?: throw EntityNotFoundException("Tag not found")
+    }
+
+    /**
+     * Find tag
      * @param name Name tag
      * @param type Tag type
      * @param path Tag path
      * @param withParent If true, the parent tag will be returned
      * @return Tag or null if not found
      */
-    open fun getTagByNameOrNull(name: String, type: TagType, path: String?, withParent: Boolean = true): Tag? {
-        return getTagOrNull(TagGetRequest(null, name, path, type, withParent))
-    }
-
-    /**
-     * Find a tag
-     * @param id UUID or slug
-     * @param type Tag type
-     * @param withParent If true, the parent tag will be returned
-     * @throws EntityNotFoundException Tag not found
-     * @return Tag
-     */
-    open fun getTagById(id: String, type: TagType, withParent: Boolean = true): Tag {
-        return getTagByIdOrNull(id, type, withParent) ?: throw EntityNotFoundException("Tag not found")
-    }
-
-    /**
-     * Find a tag
-     * @param ids ids tags
-     * @param type Tag type
-     * @param withParent If true, the parent tag will be returned
-     *
-     * @throws EntityNotFoundException Tag not found if ids.size != tags.size
-     */
-
-    open fun getTags(ids: Set<String>, withParent: Boolean = true): List<Tag> {
-        return webClient.getTags(ids, withParent).block()?.tags?.also {
-            if (it.size != ids.size) throw EntityNotFoundException("Tags not found")
-        } ?: throw EntityNotFoundException("Tags not found")
+    open fun getTagByNameOrNull(name: String, type: TagType, path: String? = null, withParent: Boolean = true): Tag? {
+        return getTagOrNull(
+            TagGetRequest(
+                ids = null,
+                names = listOf(name),
+                paths = path?.let { listOf(it) },
+                types = listOf(type),
+                withParent = withParent
+            )
+        )
     }
 
     /**
@@ -176,5 +180,34 @@ open class DictionaryService(private val webClient: WebClientDictionaryService) 
      */
     open fun getTagByName(name: String, type: TagType, path: String?, withParent: Boolean = true): Tag {
         return getTagByNameOrNull(name, type, path, withParent) ?: throw EntityNotFoundException("Tag not found")
+    }
+
+    /**
+     * Find a tag
+     * @param ids ids tags
+     * @param withParent If true, the parent tag will be returned
+     *
+     * @throws EntityNotFoundException Tag not found if ids.size != tags.size
+     */
+
+    open fun getTagsByIds(ids: Set<String>, withParent: Boolean = true, limit: Int = 30, offset: Int = 0): List<Tag> {
+        return webClient.getTags(
+            TagGetRequest(
+                ids = ids.toList(),
+                names = listOf(),
+                paths = listOf(),
+                types = listOf(),
+                withParent = withParent,
+                limit = limit,
+                offset = offset
+            )
+        )
+            .block()?.tags?.also {
+                if (it.size != ids.size) throw EntityNotFoundException("Tags not found")
+            } ?: throw EntityNotFoundException("Tags not found")
+    }
+
+    open fun findTags(request: TagGetRequest): List<Tag> {
+        return getTags(request) ?: throw EntityNotFoundException("Tags not found")
     }
 }

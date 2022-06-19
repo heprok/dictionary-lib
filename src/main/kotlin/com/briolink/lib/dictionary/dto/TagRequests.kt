@@ -16,16 +16,31 @@ data class TagCreateRequest(
 )
 
 /**
- * Get request must be name or id
+ * Get request find tags by ids AND
+ * Find by names and types AND
+ * Find by paths and types
+ *
  */
 data class TagGetRequest(
-    val id: String?,
-    val name: String?,
-    val path: String?,
-    val type: TagType,
+    val ids: List<String>?,
+    val names: List<String>?,
+    val paths: List<String>?,
+    val types: List<TagType>?,
     val withParent: Boolean = false,
+    val limit: Int = 30,
+    val offset: Int = 0,
 ) {
     init {
-        if (id == null && name == null) throw IllegalArgumentException("Query must be name or id")
+        if (ids.isNullOrEmpty() && names.isNullOrEmpty() && paths.isNullOrEmpty())
+            throw IllegalArgumentException("ids, names, paths must be not null or empty")
+
+        if (!ids.isNullOrEmpty() && !types.isNullOrEmpty() && names.isNullOrEmpty() && paths.isNullOrEmpty())
+            throw IllegalArgumentException("Query must be names or paths")
+
+        if (limit < 0 || offset < 0)
+            throw IllegalArgumentException("limit and offset must be greater than 0")
+
+        if (limit > 100)
+            throw IllegalArgumentException("limit must be less than 100")
     }
 }
