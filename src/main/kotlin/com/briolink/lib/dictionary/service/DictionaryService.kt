@@ -95,6 +95,12 @@ open class DictionaryService(private val webClient: WebClientDictionaryService) 
         return createTag(TagCreateRequest(id, name, type, path))
     }
 
+    open fun createTags(
+        tags: List<TagCreateRequest>
+    ): List<Tag> {
+        return webClient.createTags(tags).block()?.tags ?: listOf()
+    }
+
     /**
      * Find tag by request and first tag or null
      *

@@ -6,7 +6,6 @@ import com.fasterxml.jackson.annotation.JsonProperty
 enum class TagType(
     override val value: String,
     val idType: Int = value.toInt(),
-    val idIsUUID: Boolean = false,
     val withPath: Boolean = false
 ) : PersistentEnum {
     @JsonProperty
@@ -19,7 +18,7 @@ enum class TagType(
     Vertical("3"),
 
     @JsonProperty
-    CPCCode("4"),
+    CPC("4"),
 
     @JsonProperty
     InvestorType("5"),

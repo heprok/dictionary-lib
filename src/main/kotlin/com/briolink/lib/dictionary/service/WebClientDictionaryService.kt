@@ -1,6 +1,7 @@
 package com.briolink.lib.dictionary.service
 
 import com.briolink.lib.common.exception.AccessDeniedException
+import com.briolink.lib.common.exception.BadRequestException
 import com.briolink.lib.common.exception.EntityExistException
 import com.briolink.lib.common.exception.EntityNotFoundException
 import com.briolink.lib.common.exception.ValidationException
@@ -14,8 +15,10 @@ import com.briolink.lib.dictionary.model.ListTags
 import com.briolink.lib.dictionary.model.Tag
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
+import org.springframework.web.reactive.function.BodyInserters
 import org.springframework.web.reactive.function.client.WebClient
 import reactor.core.publisher.Mono
+import java.util.Optional
 
 open class WebClientDictionaryService(private val webClient: WebClient) {
 
@@ -23,9 +26,9 @@ open class WebClientDictionaryService(private val webClient: WebClient) {
     protected open val suggestionUrl = "suggestions"
 
     protected open fun <T : Exception> convertErrorResponseToMonoErrorAtTag(response: ErrorResponse): Mono<T> {
-        return when (response.httpsStatus) {
+        return when (response.httpStatus) {
             HttpStatus.FORBIDDEN -> Mono.error(AccessDeniedException(response.message ?: "Access denied"))
-            HttpStatus.BAD_REQUEST -> Mono.error(AccessDeniedException(response.message ?: "Bad request"))
+            HttpStatus.BAD_REQUEST -> Mono.error(BadRequestException(response.message ?: "Bad request"))
             HttpStatus.NOT_ACCEPTABLE -> Mono.error(ValidationException(response.message ?: "Tag type not found"))
             HttpStatus.NOT_FOUND -> Mono.error(EntityNotFoundException(response.message ?: "Parent tag not found"))
             HttpStatus.CONFLICT -> Mono.error(EntityExistException(response.message ?: "Tag and path already exists"))
@@ -34,7 +37,7 @@ open class WebClientDictionaryService(private val webClient: WebClient) {
     }
 
     protected open fun <T : Exception> convertErrorResponseToMonoErrorAtSuggestion(response: ErrorResponse): Mono<T> {
-        return when (response.httpsStatus) {
+        return when (response.httpStatus) {
             HttpStatus.FORBIDDEN -> Mono.error(AccessDeniedException(response.message ?: "Access denied"))
             HttpStatus.NOT_ACCEPTABLE ->
                 Mono.error(ValidationException(response.message ?: "Suggestion type not found"))
@@ -98,9 +101,9 @@ open class WebClientDictionaryService(private val webClient: WebClient) {
     open fun getTag(id: String, withParent: Boolean = false): Mono<Tag> {
         return webClient.get()
             .uri { builder ->
-                builder.path("/$tagUrl/$id")
+                builder.path("/$tagUrl/{id}/")
                     .queryParam("withParent", withParent)
-                    .build()
+                    .build(id)
             }
             .retrieve()
             .onStatus(HttpStatus::is4xxClientError) { response ->
@@ -110,7 +113,25 @@ open class WebClientDictionaryService(private val webClient: WebClient) {
             }
             .bodyToMono(Tag::class.java)
     }
+    open fun createTags(requestList: List<TagCreateRequest>): Mono<ListTags> {
+        val body = mapOf("tags" to requestList)
 
+        return webClient.post()
+            .uri { builder ->
+                builder.path("/$tagUrl/bulk")
+                    .build()
+            }
+            .accept(MediaType.APPLICATION_JSON)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(body))
+            .retrieve()
+            .onStatus(HttpStatus::is4xxClientError) { response ->
+                return@onStatus response.bodyToMono(ErrorResponse::class.java).flatMap { error ->
+                    return@flatMap convertErrorResponseToMonoErrorAtTag(error)
+                }
+            }
+            .bodyToMono(ListTags::class.java)
+    }
     open fun createTag(request: TagCreateRequest): Mono<Tag> {
         return webClient.post()
             .uri { builder ->
@@ -118,7 +139,7 @@ open class WebClientDictionaryService(private val webClient: WebClient) {
                     .queryParam("id", request.id)
                     .queryParam("name", request.name)
                     .queryParam("type", request.type.name)
-                    .queryParam("path", request.path)
+                    .queryParamIfPresent("path", Optional.ofNullable(request.path))
                     .build()
             }
             .retrieve()
