@@ -98,7 +98,7 @@ open class DictionaryService(private val webClient: WebClientDictionaryService) 
     open fun createTags(
         tags: List<TagCreateRequest>
     ): List<Tag> {
-        return webClient.createTags(tags).block()?.tags ?: listOf()
+        return webClient.createTags(tags).block() ?: listOf()
     }
 
     /**

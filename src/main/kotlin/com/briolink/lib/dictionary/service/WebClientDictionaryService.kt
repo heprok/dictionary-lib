@@ -17,6 +17,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.BodyInserters
 import org.springframework.web.reactive.function.client.WebClient
+import org.springframework.web.reactive.function.client.bodyToMono
 import reactor.core.publisher.Mono
 import java.util.Optional
 
@@ -113,7 +114,7 @@ open class WebClientDictionaryService(private val webClient: WebClient) {
             }
             .bodyToMono(Tag::class.java)
     }
-    open fun createTags(requestList: List<TagCreateRequest>): Mono<ListTags> {
+    open fun createTags(requestList: List<TagCreateRequest>): Mono<List<Tag>> {
         val body = mapOf("tags" to requestList)
 
         return webClient.post()
@@ -130,7 +131,7 @@ open class WebClientDictionaryService(private val webClient: WebClient) {
                     return@flatMap convertErrorResponseToMonoErrorAtTag(error)
                 }
             }
-            .bodyToMono(ListTags::class.java)
+            .bodyToMono()
     }
     open fun createTag(request: TagCreateRequest): Mono<Tag> {
         return webClient.post()
