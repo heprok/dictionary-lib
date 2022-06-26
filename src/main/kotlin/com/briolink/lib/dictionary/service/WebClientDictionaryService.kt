@@ -19,7 +19,6 @@ import org.springframework.web.reactive.function.BodyInserters
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.bodyToMono
 import reactor.core.publisher.Mono
-import java.util.Optional
 
 open class WebClientDictionaryService(private val webClient: WebClient) {
 
@@ -134,15 +133,16 @@ open class WebClientDictionaryService(private val webClient: WebClient) {
             .bodyToMono()
     }
     open fun createTag(request: TagCreateRequest): Mono<Tag> {
+        val body = mapOf("tag" to request)
+
         return webClient.post()
             .uri { builder ->
                 builder.path("/$tagUrl/")
-                    .queryParam("id", request.id)
-                    .queryParam("name", request.name)
-                    .queryParam("type", request.type.name)
-                    .queryParamIfPresent("path", Optional.ofNullable(request.path))
                     .build()
             }
+            .accept(MediaType.APPLICATION_JSON)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(BodyInserters.fromValue(body))
             .retrieve()
             .onStatus(HttpStatus::is4xxClientError) { response ->
                 return@onStatus response.bodyToMono(ErrorResponse::class.java).flatMap { error ->
