@@ -14,9 +14,9 @@ data class CompanyIndustry(
 ) {
     init {
         if (code != null && group == null) throw IllegalArgumentException("Industry group must not be null")
-        if (sector.type != TagType.Industry) throw IllegalArgumentException("Sector tag type must be Industry")
-        if (group != null && group.type != TagType.Industry) throw IllegalArgumentException("Group tag type must be Industry")
-        if (code != null && code.type != TagType.Industry) throw IllegalArgumentException("Code tag Type must be Industry")
+        if (sector.id.type != TagType.Industry) throw IllegalArgumentException("Sector tag type must be Industry")
+        if (group != null && group.id.type != TagType.Industry) throw IllegalArgumentException("Group tag type must be Industry")
+        if (code != null && code.id.type != TagType.Industry) throw IllegalArgumentException("Code tag Type must be Industry")
     }
 
     val tagWithParent: Tag

@@ -10,6 +10,7 @@ import com.briolink.lib.dictionary.dto.TagGetRequest
 import com.briolink.lib.dictionary.enumeration.SuggestionTypeEnum
 import com.briolink.lib.dictionary.enumeration.TagType
 import com.briolink.lib.dictionary.model.Tag
+import com.briolink.lib.dictionary.model.TagId
 
 open class DictionaryService(private val webClient: WebClientDictionaryService) {
 
@@ -67,7 +68,7 @@ open class DictionaryService(private val webClient: WebClientDictionaryService) 
      * @return Tag
      */
     open fun getTagIfNotExistsCreate(request: TagCreateRequest, withParent: Boolean = true): Tag {
-        val tag = if (request.id != null) getTagByIdOrNull(request.id, withParent)
+        val tag = if (request.id != null) getTagByIdOrNull(TagId(request.id, request.type), withParent)
         else getTagByNameOrNull(request.name, request.type, request.path, withParent)
 
         return tag ?: createTag(request)
@@ -138,7 +139,7 @@ open class DictionaryService(private val webClient: WebClientDictionaryService) 
      * @return Tag or null if not found
      */
     open fun getTagByIdOrNull(
-        id: String,
+        id: TagId,
         withParent: Boolean = true
     ): Tag? {
         return webClient.getTag(id, withParent).block()
@@ -151,7 +152,7 @@ open class DictionaryService(private val webClient: WebClientDictionaryService) 
      * @throws EntityNotFoundException Tag not found
      * @return Tag
      */
-    open fun getTagById(id: String, withParent: Boolean = true): Tag {
+    open fun getTagById(id: TagId, withParent: Boolean = true): Tag {
         return getTagByIdOrNull(id, withParent) ?: throw EntityNotFoundException("Tag not found")
     }
 
@@ -163,7 +164,12 @@ open class DictionaryService(private val webClient: WebClientDictionaryService) 
      * @param withParent If true, the parent tag will be returned
      * @return Tag or null if not found
      */
-    open fun getTagByNameOrNull(name: String, type: TagType, path: String? = null, withParent: Boolean = true): Tag? {
+    open fun getTagByNameOrNull(
+        name: String,
+        type: TagType,
+        path: String? = null,
+        withParent: Boolean = true
+    ): Tag? {
         return getTagOrNull(
             TagGetRequest(
                 ids = null,
@@ -196,7 +202,12 @@ open class DictionaryService(private val webClient: WebClientDictionaryService) 
      * @throws EntityNotFoundException Tag not found if ids.size != tags.size
      */
 
-    open fun getTagsByIds(ids: Set<String>, withParent: Boolean = true, limit: Int = 30, offset: Int = 0): List<Tag> {
+    open fun getTagsByIds(
+        ids: Set<String>,
+        withParent: Boolean = true,
+        limit: Int = 30,
+        offset: Int = 0
+    ): List<Tag> {
         return webClient.getTags(
             TagGetRequest(
                 ids = ids.toList(),

@@ -61,7 +61,9 @@ enum class TagType(
 
     companion object {
         private val map = values().associateBy(TagType::value)
+        private val mapIdType = values().associateBy(TagType::idType)
 
+        fun ofValue(type: Int): TagType = mapIdType[type] ?: throw IllegalArgumentException("No enum constant TagType for value $type")
         fun ofValue(type: String): TagType = map[type] ?: throw IllegalArgumentException("$type is not a valid TagType")
     }
 }

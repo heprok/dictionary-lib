@@ -13,6 +13,7 @@ import com.briolink.lib.dictionary.dto.TagGetRequest
 import com.briolink.lib.dictionary.enumeration.SuggestionTypeEnum
 import com.briolink.lib.dictionary.model.ListTags
 import com.briolink.lib.dictionary.model.Tag
+import com.briolink.lib.dictionary.model.TagId
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.BodyInserters
@@ -98,10 +99,10 @@ open class WebClientDictionaryService(private val webClient: WebClient) {
             .bodyToMono(ListTags::class.java)
     }
 
-    open fun getTag(id: String, withParent: Boolean = false): Mono<Tag> {
+    open fun getTag(id: TagId, withParent: Boolean = false): Mono<Tag> {
         return webClient.get()
             .uri { builder ->
-                builder.path("/$tagUrl/{id}/")
+                builder.path("/$tagUrl/{${id.type}/{${id.id}/")
                     .queryParam("withParent", withParent)
                     .build(id)
             }
@@ -133,7 +134,6 @@ open class WebClientDictionaryService(private val webClient: WebClient) {
             .bodyToMono()
     }
     open fun createTag(request: TagCreateRequest): Mono<Tag> {
-        val body = mapOf("tag" to request)
 
         return webClient.post()
             .uri { builder ->
@@ -142,7 +142,7 @@ open class WebClientDictionaryService(private val webClient: WebClient) {
             }
             .accept(MediaType.APPLICATION_JSON)
             .contentType(MediaType.APPLICATION_JSON)
-            .body(BodyInserters.fromValue(body))
+            .body(BodyInserters.fromValue(request))
             .retrieve()
             .onStatus(HttpStatus::is4xxClientError) { response ->
                 return@onStatus response.bodyToMono(ErrorResponse::class.java).flatMap { error ->

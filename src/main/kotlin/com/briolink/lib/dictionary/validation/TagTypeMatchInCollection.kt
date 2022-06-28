@@ -1,7 +1,7 @@
 package com.briolink.lib.dictionary.validation
 
 import com.briolink.lib.dictionary.enumeration.TagType
-import com.briolink.lib.dictionary.model.BaseTag
+import com.briolink.lib.dictionary.model.Tag
 import javax.validation.Constraint
 import javax.validation.ConstraintValidator
 import javax.validation.ConstraintValidatorContext
@@ -23,7 +23,7 @@ annotation class TagTypeMatchInCollection(
     val payload: Array<KClass<out Payload>> = []
 )
 
-class TagTypeMatchInCollectionValidator : ConstraintValidator<TagTypeMatchInCollection, Collection<BaseTag>> {
+class TagTypeMatchInCollectionValidator : ConstraintValidator<TagTypeMatchInCollection, Collection<Tag>> {
     private var allowedValues: Set<TagType> = emptySet()
 
     override fun initialize(constraintAnnotation: TagTypeMatchInCollection) {
@@ -31,9 +31,9 @@ class TagTypeMatchInCollectionValidator : ConstraintValidator<TagTypeMatchInColl
     }
 
     override fun isValid(
-        value: Collection<BaseTag>?,
+        value: Collection<Tag>?,
         context: ConstraintValidatorContext?
     ): Boolean {
-        return value == null || value.all { allowedValues.contains(it.type) }
+        return value == null || value.all { allowedValues.contains(it.id.type) }
     }
 }
